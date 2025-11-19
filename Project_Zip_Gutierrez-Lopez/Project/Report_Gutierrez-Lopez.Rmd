@@ -1,0 +1,409 @@
+---
+title: "Project"
+output: html_notebook
+---
+
+# Libraries Used
+```{r}
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(lubridate)
+library(stringr)
+library(hms)
+
+```
+
+The libraries used are tidyverse and stringr to clean data; lubridate and hms to convert dates and times into workable data; and ggplot2 to plot the data. 
+
+# Summary
+This project analyzed Uber’s 2024 dataset to explore patterns in consumer behavior and identify which factors most influence customer satisfaction. Uber is a ridesharing program, where customers can book a ride and go to another location, similar to a taxi service, just much quicker and cheaper. The dataset included information on booking patterns, vehicle performance, revenue, cancellations, and customer ratings. The main objective was to determine whether certain variables had a significant relationship with customer ratings, revealing what customers value most during their rides. Using R, the data was imported, cleaned, and analyzed through scatter plots and correlation coefficient calculations, to find potential patterns.
+
+The results showed that the selected variables did not have a strong or significant linear correlation with overall customer ratings. Although the analysis did not identify clear predictors of customer satisfaction, it provided information into how complicated consumer experiences are. Missing values from incomplete or cancelled rides and the focus on linear relationships may have limited the information discovered.
+
+# Purpose
+
+The purpose of this project is to analyze Uber’s 2024 dataset to better understand consumer behavior and identify the factors that most influence customer satisfaction. The project aims to determine whether there is a significant relationship between certain variables such as ride distance, booking value, and vehicle performance, and overall customer ratings.
+
+The main questions that this project will answer are:
+
+- Are higher customer ratings associated with specific ride characteristics?
+- Which variables show a correlation with customer satisfaction?
+
+
+In answering these questions, this project aims to provide a clearer picture of what customers value most during their rides.
+
+# Data
+
+
+Dictionary
+
+| Variable Name | What does it represent? | Type |
+|--------------------|-------------------------------------|---------------|
+| Date | Date of Booking | Categorical |
+| Time | Time of Booking | Categorical |
+| Booking ID | ID of Booking Order | Categorical |
+| Booking Status | Status of Booked Ride | Categorical |
+| Customer ID | Identification of Customer | Categorical |
+| Vehicle Type | Type of Car Completing Rides | Categorical |
+| Pickup Location | Where Drivers Meet Customers | Categorical |
+| Drop Location | Where Drivers Leave Customers | Categorical |
+| Avg VTAT | Average Vehicle Turnaround Time | Numerical |
+| Avg CTAT | Average Customer Turnaround Time | Numerical |
+| Cancelled Rides by Customer | If Ride Was Cancelled by Customer | Categorical |
+| Reason for Cancelling by Customer | Reason for Customer Cancellation | Categorical |
+| Cancelled Rides by Driver | If Ride Was Cancelled by Customer | Categorical |
+| Driver Cancellation Reason | Reason for Driver Cancellation | Categorical |
+| Incomplete Rides | If Ride Was Completed | Categorical |
+| Incomplete Rides Reason | Reason for Incomplete Ride | Categorical |
+| Booking Value | Value of Ride | Numerical |
+| Ride Distance | How Far the Ride Is | Numerical |
+| Driver Ratings | Rating of Driver | Numerical |
+| Customer Rating | Rating of Customer | Numerical |
+| Payment Method | How Customer Paid | Categorical |
+
+Summary Statistics
+
+There were missing/NA variables due to incomplete or cancelled Uber rides, so these were dropped. The dimension of the data is 150000 Rows by 21 Columns. Additionally, all variables were under the character type and some have to be converted to their correct types (numerical or datetime).
+
+```{r}
+uber_data <- read.csv("ncr_ride_bookings.csv")
+uber_data
+```
+```{r}
+dim(uber_data)
+
+```
+
+```{r}
+summary(uber_data)
+cleaned_uber_data <- uber_data
+```
+
+Description
+
+This describes the data collected from Uber operations for 2024. It details booking patterns, vehicle performance, revenue stream, cancellation behaviors, and customer satisfaction metrics.
+
+The data that stands out is date, time, type of vehicle, average vehicle time at arrival, booking value, ride distance, booking status, and customer rating. Date and time correspond to the date and time an Uber was booked. Vehicle type corresponds to what kind of car or bike was used to transport a customer through Uber. Average vehicle turnaround time is the time it takes for a driver to reach the pickup location (in minutes). Booking value refers to the total fare amount of a ride, this takes into account the fare, the distance, and the time it was booked. Ride distance is the distance covered in the ride (in kilometers). Booking status refers to the status of the booking, if its completed, cancelled, etc. Customer ratings are the ratings customer give their Uber driver from a scale of 1-5. Average vehicle turn around time, booking value, ride distance, and customer rating are all characters, so this needs to be converted into numerical.
+
+```{r}
+selected_data <- cleaned_uber_data %>%
+  select("Date", "Time", "Vehicle.Type", "Avg.VTAT", "Booking.Value", "Ride.Distance", "Customer.Rating")
+
+selected_data
+```
+
+
+
+```{r}
+head(selected_data,4)
+```
+In this data set, date and time need to be converted into datetime variables. Additionally, average vehicle turn around time, booking value, ride distance, and customer rating need to be converted into numerical variables to make it easier to plot.
+
+
+```{r}
+date_time_data <- selected_data %>%
+  mutate(Date = mdy(Date)) %>%
+  mutate(Time = as_hms(Time))
+  
+date_time_data
+```
+
+
+
+
+
+```{r}
+numerical_data <- date_time_data %>%
+    mutate(
+      Avg.VTAT = as.numeric(Avg.VTAT),
+      Booking.Value = as.numeric(Booking.Value),
+      Ride.Distance = as.numeric(Ride.Distance) * .62,
+      Customer.Rating = as.numeric(Customer.Rating))
+```
+
+
+The rows that have no customer ratings need to be dropped, as the main goal of this project is to determine what factors positively or negatively affect customer ratings.
+
+
+```{r}
+summary(final_data)
+```
+
+
+```{r}
+final_data<-final_data %>%
+  arrange(Date, decreasing = FALSE) %>%
+  drop_na(Avg.VTAT,Booking.Value,Ride.Distance,Customer.Rating)
+
+```
+
+
+```{r}
+
+rounded_data <- final_data %>%
+  mutate(rounded_date = round_date(Date,
+             unit = "month"))
+              #create new column round the dates to the end of their week
+```
+
+```{r}
+rounded_data
+```
+
+Now it is time to focus on the important variables that may affect customer ratings.
+
+# Exploratory Data Analysis
+
+```{r}
+breaks_by_month = c(seq(ymd("2024-01-01"),ymd("2025-01-01"), by = "1 month"))
+
+
+final_data %>%
+  ggplot(aes(x = rounded_data$rounded)) +
+  geom_bar(fill ="#f985ee", breaks = breaks_by_month) +
+  labs (
+    x = "Month/Year",
+    y = "Frequency",
+    title = "Frequency for Booking Dates"
+  )+ theme(axis.text.x = element_text(angle = -90))+
+  theme (axis.title.x = element_text(color = "white"),axis.title.y = element_text(color = "white"),axis.text.x = element_text(color = "white"),axis.text.y = element_text(color = "white"),panel.background = element_rect(fill = "#ffddfc"), plot.background = element_rect(fill = "#e88bff", color ="#f7a0d6"),title = element_text(color = "white"))
+
+```
+This bar chart shows the frequency of booking dates based on months and years. The data seems to be pretty uniform with the exception of the first and last bars, Jan 2024 and Jan 2025. It is odd that there are more bookings for January 2024 as opposed to January 2025, but the difference is very slight.
+
+```{r}
+time <- rounded_data %>%
+  select(Time) %>%
+  mutate(
+    Time = as.character(Time),
+    Hour = str_sub(Time, 1, 2),
+    Hour = as.numeric(gsub(":", "", Hour))
+  ) %>%
+  arrange(Hour)
+```
+
+```{r}
+time<- drop_na(time)
+```
+
+```{r}
+
+time%>%
+  ggplot(aes(x = Hour)) + 
+  geom_bar(fill = "#f985ee") +
+  labs(
+    title = "Booking Time Frequency (in Hours)",
+    x = "Hours",
+    y = "Frequency"
+  )+
+  scale_x_continuous(breaks = 0:23) +
+  theme(axis.text.x = element_text(angle = -90)) + theme (axis.title.x = element_text(color = "white"),axis.title.y = element_text(color = "white"),axis.text.x = element_text(color = "white"),axis.text.y = element_text(color = "white"),panel.background = element_rect(fill = "#ffddfc"), plot.background = element_rect(fill = "#e88bff", color ="#f7a0d6"),title = element_text(color = "white"))
+
+  
+```
+This bar chart of booking time frequency shows the frequency of bookings per hour. During the early hours of the morning (0:00 - 5:00), there are the least amount of orders placed. As time passes (from 5:00 - 13:00), it becomes a normal distribution, with a peak at 10:00. From 13:00 to 23:00, there is another normal distribution, with its peak at 18:00. These frequencies make sense as they align with hours of heavy movement, where consumers are most out of their homes.
+
+
+```{r}
+
+final_data %>%
+  ggplot(aes(x = Avg.VTAT)) +
+  geom_boxplot(fill ="#f985ee") +
+  labs (
+    x = "VTAT Times",
+    title = "Average VTAT Times (In Minutes)"
+  )+ theme(axis.text.x = element_text(angle = -90))+
+  theme (axis.title.x = element_text(color = "white"),axis.title.y = element_text(color = "white"),axis.text.x = element_text(color = "white"),axis.text.y = element_text(color = "white"),panel.background = element_rect(fill = "#ffddfc"), plot.background = element_rect(fill = "#e88bff", color ="#f7a0d6"),title = element_text(color = "white"))
+
+```
+This boxplot shows the vehicle turn around times for the dataset. The minimum is 2 minutes and the maximum is around 15 minutes. The mean is around 8.5 minutes, the first quartile is at 5.5 minutes and the third quartile is at approximately 12 minutes. It seems like there is not that long of a waiting time for a vehicle, and there does not seem to be any outliers in this graph.
+
+```{r}
+final_data %>%
+  ggplot(aes(x=Booking.Value,y=Time)) + 
+  geom_point(color = "#f985ee") +
+  labs(
+    title = "Booking Value vs. Time",
+    x  = "Booking Value",
+    y  = "Time (in 24 hours)"
+  ) +
+  theme (axis.title.x = element_text(color = "white"),axis.title.y = element_text(color = "white"),axis.text.x = element_text(color = "white"),axis.text.y = element_text(color = "white"),panel.background = element_rect(fill = "#ffddfc"), plot.background = element_rect(fill = "#e88bff", color ="#f7a0d6"),title = element_text(color = "white"))
+
+```
+This scatter plot shows the most popular booking times and their respective booking value. After around 9 am, there seems to be an increase in average booking value, from around 1000 to around 1500. However, all times seem to have at least one high booking value, this may be because of the type of vehicle or destination as well. The more frequent booking values tend to be at or under 1000. As the booking values increase, their frequency decrease.
+
+```{r}
+final_data %>%
+  ggplot(aes(Ride.Distance)) + 
+  geom_freqpoly(bins = 30,color = "#f985ee") +
+  scale_x_continuous(breaks = c(0,10,20,30,40,50)) +
+  labs(
+    title = "Frequency of Ride Distance",
+    x  = "Ride Distance (miles)",
+    y  = "Frequency"
+  ) +
+    theme (axis.title.x = element_text(color = "white"),axis.title.y = element_text(color = "white"),axis.text.x = element_text(color = "white"),axis.text.y = element_text(color = "white"),panel.background = element_rect(fill = "#ffddfc"), plot.background = element_rect(fill = "#e88bff", color ="#f7a0d6"),title = element_text(color = "white"))
+
+```
+This is a line graph of the frequency of ride distance for each Uber ride. It seems like it is consistent in that distances from 5-45 miles are all around the same frequency. It seems like consumers take Uber rides to a variety of different locations.
+
+
+```{r}
+
+final_data %>%
+  ggplot(aes(x = Customer.Rating)) +
+  geom_boxplot(fill ="#f985ee") +
+  labs (
+    x = "Customer Ratings",
+    title = "Average Customer Ratings"
+  )+ theme(axis.text.x = element_text(angle = -90))+
+  theme (axis.title.x = element_text(color = "white"),axis.title.y = element_text(color = "white"),axis.text.x = element_text(color = "white"),axis.text.y = element_text(color = "white"),panel.background = element_rect(fill = "#ffddfc"), plot.background = element_rect(fill = "#e88bff", color ="#f7a0d6"),title = element_text(color = "white"))
+
+```
+
+This boxplot shows average customer ratings for the data set. It seems like the overall rating for these rides is 4.5, which is a high average. There are a few lower ratings as outliers, however, those seem to not be the standard. It is usually around a 4-4.7 rating.
+
+
+
+
+Details on Data Cleanliness 
+
+There were null/NA cells due to incomplete rides and cancellations. It does not appear that any of the elements are spelled wrong. Some of these variables were hard to understand such as vehicle turn around time, so its definition needed to be looked up.
+
+Next, the variable's correlations are determined.
+
+# Correlation
+
+```{r}
+final_data %>%
+  suppressWarnings(
+  ggplot(aes(x = Customer.Rating, y = Booking.Value)) +
+  geom_point(color = "#f985ee") +
+  labs (
+    x = "Customer Ratings",
+    y = "Booking Value",
+    title = "Customer Ratings at Different Booking Values"
+  )+ 
+      theme (axis.title.x = element_text(color = "white"),axis.title.y = element_text(color = "white"),axis.text.x = element_text(color = "white"),axis.text.y = element_text(color = "white"),panel.background = element_rect(fill = "#ffddfc"), plot.background = element_rect(fill = "#e88bff", color ="#f7a0d6"),title = element_text(color = "white")))
+
+
+```
+This scatter plot graph shows booking value compared to customer rating. There does not appear to be any correlation between the two as there are points everywhere and no apparent trend. All booking values experience all customer ratings, so booking values do not seem to influence how a customer rates their ride.
+
+
+```{r}
+final_data %>%
+  ggplot(aes(y = Customer.Rating, x = Ride.Distance)) +
+  geom_point(color = "#f985ee") +
+  labs (
+    x = "Ride Distance (in miles)",
+    y = "Customer Ratings",
+    title = "Customer Ratings at Different Ride Distances"
+  ) + 
+   theme (axis.title.x = element_text(color = "white"),axis.title.y = element_text(color = "white"),axis.text.x = element_text(color = "white"),axis.text.y = element_text(color = "white"),panel.background = element_rect(fill = "#ffddfc"), plot.background = element_rect(fill = "#e88bff", color ="#f7a0d6"),title = element_text(color = "white"))
+  
+
+
+```
+This scatter plot graph compares how long an Uber ride was and what the customer's rating was. There does not seem to be a correlation here. All different ride distances seem to have had every customer rating (or most of them), so ride distance does not seem to influence how a customer rates their ride.
+
+```{r}
+final_data %>%
+  ggplot(aes(y = Customer.Rating, x = Vehicle.Type)) +
+  geom_boxplot(fill = "#f985ee") +
+  labs (
+    x = "Vehicle Type",
+    y = "Customer Ratings",
+    title = "Customer Ratings at Different Vehicle Types"
+  )+ theme(axis.text.x = element_text(angle = 0))+
+  theme (axis.title.x = element_text(color = "white"),axis.title.y = element_text(color = "white"),axis.text.x = element_text(color = "white"),axis.text.y = element_text(color = "white"),panel.background = element_rect(fill = "#ffddfc"), plot.background = element_rect(fill = "#e88bff", color ="#f7a0d6"),title = element_text(color = "white"))
+```
+This boxplot graph shows the average customer ratings per vehicle type booked. It does not appear that vehicle type has any affect on the customer rating given to each ride. All types of vehicles seem to have an average of a rating of around 4.5, with Auto, Bike, Premier Sedan, and Uber XL only barely not meeting the 4.5 average. For all types of vehicles the average is high and the outliers are sparing, with the most being around 3.2. There does not appear to be any correlation between the two as all the box plots appear similar, so vehicle types do not seem to influence how a customer rates their ride.
+
+```{r}
+final_data %>%
+
+  ggplot(aes(x = Customer.Rating, y = Avg.VTAT)) +
+  geom_point(color = "#f985ee") +
+  labs (
+    x = "Customer Ratings",
+    y = "Average Vehicle Turnaround Time",
+    title = "Customer Ratings at Different Vehicle Turnaround Times"
+  ) +
+  theme (axis.title.x = element_text(color = "white"),axis.title.y = element_text(color = "white"),axis.text.x = element_text(color = "white"),axis.text.y = element_text(color = "white"),panel.background = element_rect(fill = "#ffddfc"), plot.background = element_rect(fill = "#e88bff", color ="#f7a0d6"),title = element_text(color = "white"))
+
+
+```
+
+This scatter plot graph compares the average turn around time for an Uber ride and what the customer's rating was. There seems to be no correlation here. All different turn around times seem to have had every customer rating (or most of them), so average vehicle turnaround time does not seem to influence how a customer rates their ride.
+
+```{r}
+final_data %>%
+  ggplot(aes(y = Customer.Rating, x = Date)) +
+  geom_point(color = "#f985ee") +
+  labs (
+    x = "Date",
+    y = "Customer Ratings",
+    title = "Customer Ratings at Different Months"
+  ) +
+  theme (axis.title.x = element_text(color = "white"),axis.title.y = element_text(color = "white"),axis.text.x = element_text(color = "white"),axis.text.y = element_text(color = "white"),panel.background = element_rect(fill = "#ffddfc"), plot.background = element_rect(fill = "#e88bff", color ="#f7a0d6"),title = element_text(color = "white"))
+```
+This scatter plot graph compares what month and year an Uber ride was booked and what the customer's rating was. There seems to be no correlation here. All different months and years seem to have had every customer rating (or most of them), so booking date does not seem to influence how a customer rates their ride.
+
+```{r}
+final_data <- final_data %>%
+  mutate(Hour = time$Hour)
+```
+
+```{r}
+
+final_data %>%
+  ggplot(aes(y = Customer.Rating, x = Hour))+
+  geom_point(color = "#f985ee") +
+  labs (
+    x = "Hour",
+    y = "Customer Ratings",
+    title = "Customer Ratings at Different Hours"
+  ) +
+    theme (axis.title.x = element_text(color = "white"),axis.title.y = element_text(color = "white"),axis.text.x = element_text(color = "white"),axis.text.y = element_text(color = "white"),panel.background = element_rect(fill = "#ffddfc"), plot.background = element_rect(fill = "#e88bff", color ="#f7a0d6"),title = element_text(color = "white"))
+  
+
+```
+This scatter plot graph compares at what time an Uber ride was booked and what the customer's rating was. There seems to be no correlation here. All the different hours seem to have had every customer rating (or most of them), so the time of booking does not seem to influence how a customer rates their ride.
+
+
+```{r}
+correlation_data <- final_data%>%
+  select(Avg.VTAT,Booking.Value,Ride.Distance,Customer.Rating)
+
+cor(correlation_data)
+
+```
+This correlation matrix identifies if there are any relationships between ride distance, average vehicle turn around time, booking value, and customer rating. This matrix shows that there are no significant relationships between the variables, as all variables have less than .01 correlation with each other (with the exception of the variables compared to themselves).
+
+
+# Results
+
+This  analysis focused on determining if there was any significant linear correlation between several numerical variables believed to be important to overall customer ratings The method involved analyzing certain variables by themselves and then again against consumer ratings. To compare these variables against consumer ratings, scatter plots were used to  inspect the data for any trends or patterns. Then the correlation coefficient was calculated for each variable with the consumer rating.
+
+Scatter plots serve as a great visual aid that can demonstrate a trend. The calculation of the correlation coefficient shows a numerical value that can help determine if there were any actual trends. A coefficient near 1 indicates a strong relationship, while a value close to 0 confirms their is none. 
+
+The initial assumption that these selected variables would show a strong connection to customer ratings was wrong. 
+
+The visual aspect of the scatter plots created showed no apparent trend and this was confirmed with the correlation coefficient calculations. As a result, these variables, by themselves, do not have a statistically significant linear correlation with consumer ratings and are unlikely to be predictors of customer satisfaction.
+
+# Conclusions
+
+This analysis aimed to determine whether there was any significant linear correlation between several variables and overall customer ratings. Using scatter plots and correlation coefficient calculations, each variable was examined individually and then compared against customer ratings to identify any potential trends or patterns. The initial assumption was that these variables would show a strong relationship with customer ratings.
+
+The findings indicated that the initial assumption was incorrect. The scatter plots revealed no noticeable patterns or trends, and the calculated correlation coefficients confirmed that there was no significant linear relationship between the selected variables and customer ratings.
+
+One limitation of this study is the presence of missing values in the data set, particularly from incomplete or cancelled rides, which may have provided more information if the ratings were recorded. This data may also be synthetic, since there is no correlation in any of the variable, which is not very common in a natural data set.
+
+Additionally, the focus on linear relationships with consumer ratings may have ignored potential correlations or interactions with other variables.
+
+
+# References
+
+[Kaggle - Uber Ride Analytics](https://www.kaggle.com/datasets/yashdevladdha/uber-ride-analytics-dashboard)
